@@ -4,6 +4,7 @@ const StorageService = require('./services/storageService');
 const TransactionFilter = require('./utils/filters');
 const EmailService = require('./services/emailService');
 const AIAnalyzer = require('./services/aiAnalyzer');
+const TelegramService = require('./services/telegramService');
 const APIServer = require('./api/server');
 
 // Initialize services
@@ -20,10 +21,16 @@ const emailService = new EmailService(
   process.env.EMAIL_TO
 );
 
+const telegramService = new TelegramService(
+  process.env.TELEGRAM_BOT_TOKEN,
+  process.env.TELEGRAM_CHAT_ID
+);
+
 const txFilter = new TransactionFilter({
   minValue: 0.001,        // Only alert for transactions > 0.001 ETH
   ignoreZeroValue: false  // Set to true to ignore token transfers
 });
+
 const apiServer = new APIServer(3001);
 const aiAnalyzer = new AIAnalyzer();
 
@@ -66,6 +73,9 @@ async function handleTransaction(txDetails) {
     console.log(analyzed.ai.summary);
     console.log('=============================================\n');
 
+    // Send Telegram alert
+    await telegramService.sendTransactionAlert(analyzed);
+
     // Send email alert (disabled)
     // await emailService.sendTransactionAlert(analyzed);
 
@@ -84,8 +94,12 @@ async function main() {
 
   // Initialize storage
   await storageService.initialize();
+
   // Start API server
   await apiServer.start();
+
+  // Test Telegram connection
+  await telegramService.testConnection();
 
   // Test email connection (disabled)
   // await emailService.testConnection();
@@ -97,7 +111,7 @@ async function main() {
   console.log('  - Total alerts sent:', stats.totalAlerted);
   console.log('');
 
-  // Test connection
+  // Test blockchain connection
   console.log('🔌 Testing connection...');
   const connectionTest = await blockchainService.testConnection();
   
@@ -112,6 +126,9 @@ async function main() {
 
   // Start monitoring
   await blockchainService.startMonitoring(handleTransaction);
+
+  // Send Telegram startup notification
+  await telegramService.sendStartupNotification();
   
   console.log('✨ Agent is now running! Press Ctrl+C to stop.\n');
 }
@@ -120,15 +137,14 @@ async function main() {
 process.on('SIGINT', async () => {
   console.log('\n\n👋 Shutting down gracefully...');
   
-  apiServer.stop();
-  blockchainService.stopMonitoring();
-  
   const stats = await storageService.getStats();
   console.log('\n📊 Final Stats:');
   console.log('  - Total transactions saved:', stats.totalTransactions);
   console.log('  - Total alerts sent:', stats.totalAlerted);
   
+  apiServer.stop();
   blockchainService.stopMonitoring();
+  
   process.exit(0);
 });
 
