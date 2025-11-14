@@ -1,4 +1,6 @@
 # 🤖 AI-Powered Blockchain Transaction Monitor
+ 
+ 🐦 [Featured on Twitter](https://x.com/Teon101/status/1989125763958972633)
 
 An intelligent blockchain monitoring agent that tracks Ethereum transactions in real-time, analyzes them with AI, and provides actionable insights through alerts and a REST API.
 
